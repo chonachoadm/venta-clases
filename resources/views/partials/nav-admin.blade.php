@@ -27,7 +27,7 @@
           <a class="nav-link" href="{{ route('usuarios.index') }}">Usuarios</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{{ route('videos') }}">Compras</a>
+          <a class="nav-link" href="{{ route('suscripciones.index') }}">Compras</a>
         </li>
       </ul>
     </div>

@@ -29,11 +29,6 @@ class MercadoPagoPaymentService extends PaymentService
         try {
             $response = Http::withToken(config('services.mercadopago.access_token'))
                 ->post('https://api.mercadopago.com/preapproval', [
-                    // 'back_urls' => [
-                    //     'success' => route('payment.success', ['purchase_id' => $subscription->id, 'provider' => 'mercadopago']),
-                    //     'failure' => route('payment.failure', ['provider' => 'mercadopago']),
-                    //     'pending' => route('payment.pending', ['provider' => 'mercadopago']),
-                    // ],
                     'back_url' => config('app.url'),
                     'reason' => $package->name,
                     'external_reference' => (string) $subscription->id,
@@ -77,79 +72,49 @@ class MercadoPagoPaymentService extends PaymentService
     }
 
     /**
-     * Create a payment preference in MercadoPago.
-     *
-     * @param Purchase $purchase
-     * @return array{redirect_url: string, order_id: string}
-     */
-    // public function createPayment(Purchase $purchase): array
-    // {
-    //     $package = $purchase->package;
-    //     $guest = $purchase->guest;
-
-    //     try {
-    //         $client = new PreferenceClient();
-    //         $preference = $client->create([
-    //             'items' => [
-    //                 [
-    //                     'id' => (string) $package->id,
-    //                     'title' => $package->name . ' Package',
-    //                     'description' => 'Acceso a la biblioteca virtual por ' . $package->month_amount . ' meses.',
-    //                     'quantity' => 1,
-    //                     'currency_id' => 'ARS',
-    //                     'unit_price' => (float) $package->total_price,
-    //                 ],
-    //             ],
-    //             'back_urls' => [
-    //                 'success' => 'localhost:8000/payment/success',
-    //                 'pending' => 'localhost:8000/payment/pending',
-    //                 'failure' => 'localhost:8000/payment/failure',
-    //                 // 'success' => route('payment.success', ['purchase_id' => $purchase->id, 'provider' => 'mercadopago']),
-    //                 // 'failure' => route('payment.failure', ['provider' => 'mercadopago']),
-    //                 // 'pending' => route('payment.pending', ['provider' => 'mercadopago']),
-    //             ],
-    //             'auto_return' => 'approved',
-    //             'statement_descriptor' => 'Gi Braier',
-    //             'external_reference' => (string) $purchase->id,
-    //         ]);
-
-    //         return [
-    //             'redirect_url' => $preference->init_point,
-    //             'order_id' => $preference->id,
-    //         ];
-    //     } catch (\MercadoPago\Exceptions\MPApiException $e) {
-    //         $response = $e->getApiResponse();
-    //         $content = $response ? $response->getContent() : [];
-
-    //         \Log::error('Mercado Pago API Error', [
-    //             'message' => $e->getMessage(),
-    //             'content' => $content,
-    //             'access_token_set' => !empty(config('services.mercadopago.access_token')),
-    //         ]);
-
-    //         $errorMsg = 'Mercado Pago error';
-    //         if (is_array($content) && isset($content['message'])) {
-    //             $errorMsg = $content['message'];
-    //         }
-
-    //         throw new \Exception('Mercado Pago payment creation failed: ' . $errorMsg);
-    //     } catch (\Exception $e) {
-    //         \Log::error('Mercado Pago Error: ' . $e->getMessage());
-    //         throw $e;
-    //     }
-    // }
-
-    /**
      * Verify payment after redirect from MercadoPago.
      * This is a basic redirect-based verification.
      *
-     * @param Purchase $purchase
+     * @param Subscription $subscription
      * @return bool
      */
     public function verifySubscription(Subscription $subscription): bool
     {
         return $subscription->status === 'active'
             && $subscription->expires_at?->isFuture();
+    }
+
+    public function cancelSubscriptionService(Subscription $subscription): bool
+    {
+        if (!$subscription->external_id) {
+            throw new \Exception('La suscripción no tiene un ID de Mercado Pago.');
+        }
+
+        $response = Http::withToken(config('services.mercadopago.access_token'))
+            ->put(
+                "https://api.mercadopago.com/preapproval/{$subscription->external_id}",
+                [
+                    'status' => 'cancelled',
+                ]
+            );
+
+        if (!$response->successful()) {
+            \Log::error('Error cancelando suscripción de Mercado Pago', [
+                'subscription_id' => $subscription->id,
+                'external_id' => $subscription->external_id,
+                'response' => $response->json(),
+            ]);
+
+            throw new \Exception(
+                $response->json('message') ?? 'No se pudo cancelar la suscripción en Mercado Pago.'
+            );
+        }
+
+        $subscription->update([
+            'status' => 'cancelled',
+        ]);
+
+        return true;
     }
 
     /**

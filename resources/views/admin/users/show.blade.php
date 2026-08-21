@@ -44,14 +44,17 @@
         </ul>
         <h4>
             Plan de entrenamiento
-        </h4>
+        </h4> 
         <ul>
             @if($activeSubscription)
+            <li>
+                <p><strong>Plan adquirido: </strong>{{ $activeSubscription->package->name }}</p>
+            </li>
             <li>
                 <p><strong>Fecha de compra: </strong>{{ $activeSubscription->created_at->format('d/m/Y') }}</p>
             </li>
             <li>
-                <p><strong>Fecha de vencimiento: </strong>{{ $activeSubscription->expires_at->format('d/m/Y') }}</p>
+                <p><strong>Fecha del siguiente pago: </strong>{{ $activeSubscription->expires_at->format('d/m/Y') }}</p>
             </li>
             @else
             <li>
@@ -59,6 +62,14 @@
             </li>
             @endif
         </ul>
+        <div class="row">
+            <h4>Contactar</h4>
+            <div class="col-2">
+                <a href="https://wa.me/{{ $phoneNumber }}">
+                    <img class="w-25" src="{{ asset('/storage/images/icons/wpp-icon.svg') }}" alt="">
+                </a>
+            </div>
+        </div>
     </div>
 </section>
 

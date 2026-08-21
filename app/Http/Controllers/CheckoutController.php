@@ -19,6 +19,7 @@ class CheckoutController extends Controller
         return view('checkout', compact('packages'));
     }
 
+
     public function showCheckout(Request $request)
     {
         $validated = $request->validate([
@@ -28,7 +29,7 @@ class CheckoutController extends Controller
             'phone' => 'required|string|max:20',
         ]);
 
-        $old = Subscription::whereHas('guest', function ($q) use ($validated) {
+        $old = Subscription::whereHas('user', function ($q) use ($validated) {
             $q->where('email', $validated['email']);
         })->where('status', 'active')->first();
 
@@ -54,11 +55,25 @@ class CheckoutController extends Controller
             'status' => 'pending',
         ]);
 
+        return view('checkout-conf', compact('subscription', 'guest', 'package'));
+
+    }
+
+    public function payWithMercadoPago(Request $request)
+    {
+        $subscription = Subscription::where('id', $request->subscription_id)->first();
+        $guest = Guest::where('id', $request->guest_id)->first();
+        $package = Package::where('id', $request->package_id)->first();
+
         $paymentService = PaymentServiceFactory::make('mercadopago');
 
         $result = $paymentService->createSubscription($subscription, $guest, $package);
 
         return redirect()->away($result['redirect_url'])->with('success', '¡Bienvenidx! En breve te llegará un correo para terminar de crear tu usuario.');
+    }
+    public function payWithPayPal()
+    {
 
+        $paymentService = PaymentServiceFactory::make('paypal');
     }
 }

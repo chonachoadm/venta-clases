@@ -19,7 +19,7 @@
         @endforeach
     </div>
 
-    <form action="{{ route('checkout-confirmation') }}" method="post">
+    <form action="{{ route('checkout.confirmation') }}" method="post">
         @csrf
 
         <div class="package-selection">

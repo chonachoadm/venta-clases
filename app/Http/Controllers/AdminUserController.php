@@ -19,10 +19,10 @@ class AdminUserController extends Controller
 
     $users = User::query()
         ->when($request->filter === 'active', function ($query) {
-            $query->whereHas('activePackages');
+            $query->whereHas('activeSubscription');
         })
         ->when($request->filter === 'inactive', function ($query) {
-            $query->whereDoesntHave('activePackages');
+            $query->whereDoesntHave('activeSubscription');
         })
         ->get();
         $totalVideos = Video::count();
@@ -79,9 +79,10 @@ class AdminUserController extends Controller
         $user = User::where('id', $id)->first();
         $totalVideos = Video::count();
         $activeSubscription = $user->activeSubscription()->latest()->first();
+        $phoneNumber = preg_replace('/\D/', '', $user->phone);
 
         // return view('admin.users.show', compact('user', 'totalVideos', 'activePurchase'));
-        return view('admin.users.show', compact('user', 'totalVideos', 'activeSubscription'));
+        return view('admin.users.show', compact('user', 'totalVideos', 'activeSubscription', 'phoneNumber'));
     }
 
     /**

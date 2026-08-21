@@ -13,23 +13,24 @@
         Tu número de telefono: {{ $guest->phone }}
     </li>
     <li>
-        Estás comprando el paquete {{ $purchase->package->name }}
+        Estás comprando el paquete {{ $package->name }}
     </li>
     <li>
-        Precio: $ {{ $purchase->package->total_price }}
+        Precio: $ {{ $package->total_price }}
     </li>
 </ul>
 
-<a href="{{ route('payment.start', [
-    'purchase' => $purchase->id,
-    'provider' => 'mercadopago'
-]) }}">
-    Pagar con MercadoPago
-</a>
 
-<a href="{{ route('payment.start', [
-    'purchase' => $purchase->id,
-    'provider' => 'paypal'
-]) }}">
-    Pagar con PayPal
-</a>
+<form action="{{ route('checkout.mercadopago') }}" method="post">
+    @csrf
+    <input type="hidden" name="subscription_id" value="{{ $subscription->id }}">
+    <input type="hidden" name="guest_id" value="{{ $guest->id }}">
+    <input type="hidden" name="package_id" value="{{ $package->id }}">
+    
+    <button type="submit">Pagar con MercadoPago</button>
+</form>
+
+<form action="{{ route('checkout.paypal') }}" method="post">
+    @csrf
+    <button type="submit">Pagar con PayPal</button>
+</form>
