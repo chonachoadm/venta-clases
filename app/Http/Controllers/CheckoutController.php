@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\PaymentServiceFactory;
-use Illuminate\Http\Request;
-use App\Models\Package;
 use App\Models\Guest;
+use App\Models\Package;
+use App\Models\Purchase;
 use App\Models\Subscription;
+use App\Services\PaymentServiceFactory;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class CheckoutController extends Controller
 {
@@ -16,9 +18,9 @@ class CheckoutController extends Controller
     public function index()
     {
         $packages = Package::all();
+
         return view('checkout', compact('packages'));
     }
-
 
     public function showCheckout(Request $request)
     {
@@ -29,13 +31,16 @@ class CheckoutController extends Controller
             'phone' => 'required|string|max:20',
         ]);
 
-        $old = Subscription::whereHas('user', function ($q) use ($validated) {
-            $q->where('email', $validated['email']);
-        })->where('status', 'active')->first();
+        $hasActiveAccess = Subscription::whereHas('user', fn ($q) => $q->where('email', $validated['email']))
+            ->where('status', 'active')
+            ->exists()
+            || Purchase::whereHas('user', fn ($q) => $q->where('email', $validated['email']))
+                ->where('status', 'active')
+                ->exists();
 
-        if ($old) {
+        if ($hasActiveAccess) {
             return back()->withErrors([
-                'email' => 'Este email ya tiene una suscripción activa.'
+                'email' => 'Este email ya tiene una suscripción activa.',
             ]);
         }
 
@@ -49,31 +54,98 @@ class CheckoutController extends Controller
 
         $package = Package::findOrFail($validated['package_id']);
 
+        // Kept in session (not the request body) so pay* actions can't be pointed at another guest/package.
+        session([
+            'checkout.guest_id' => $guest->id,
+            'checkout.package_id' => $package->id,
+        ]);
+
+        return view('checkout-conf', compact('guest', 'package'));
+    }
+
+    public function payWithMercadoPagoSubscription(): RedirectResponse
+    {
+        [$guest, $package] = $this->checkoutSelection();
+
         $subscription = Subscription::create([
             'guest_id' => $guest->id,
             'package_id' => $package->id,
+            'provider' => 'mercadopago',
             'status' => 'pending',
         ]);
 
-        return view('checkout-conf', compact('subscription', 'guest', 'package'));
+        $result = PaymentServiceFactory::make('mercadopago')->createSubscription($subscription, $guest, $package);
 
+        return $this->redirectToProvider($result);
     }
 
-    public function payWithMercadoPago(Request $request)
+    public function payWithMercadoPagoOneTime(): RedirectResponse
     {
-        $subscription = Subscription::where('id', $request->subscription_id)->first();
-        $guest = Guest::where('id', $request->guest_id)->first();
-        $package = Package::where('id', $request->package_id)->first();
+        [$guest, $package] = $this->checkoutSelection();
 
-        $paymentService = PaymentServiceFactory::make('mercadopago');
+        $purchase = Purchase::create([
+            'guest_id' => $guest->id,
+            'package_id' => $package->id,
+            'provider' => 'mercadopago',
+            'status' => 'pending',
+        ]);
 
-        $result = $paymentService->createSubscription($subscription, $guest, $package);
+        $result = PaymentServiceFactory::make('mercadopago')->createOneTimePayment($purchase, $guest, $package);
 
-        return redirect()->away($result['redirect_url'])->with('success', '¡Bienvenidx! En breve te llegará un correo para terminar de crear tu usuario.');
+        return $this->redirectToProvider($result);
     }
-    public function payWithPayPal()
-    {
 
-        $paymentService = PaymentServiceFactory::make('paypal');
+    public function payWithPayPalSubscription(): RedirectResponse
+    {
+        [$guest, $package] = $this->checkoutSelection();
+
+        $subscription = Subscription::create([
+            'guest_id' => $guest->id,
+            'package_id' => $package->id,
+            'provider' => 'paypal',
+            'status' => 'pending',
+        ]);
+
+        $result = PaymentServiceFactory::make('paypal')->createSubscription($subscription, $guest, $package);
+
+        return $this->redirectToProvider($result);
+    }
+
+    public function payWithPayPalOneTime(): RedirectResponse
+    {
+        [$guest, $package] = $this->checkoutSelection();
+
+        $purchase = Purchase::create([
+            'guest_id' => $guest->id,
+            'package_id' => $package->id,
+            'provider' => 'paypal',
+            'status' => 'pending',
+        ]);
+
+        $result = PaymentServiceFactory::make('paypal')->createOneTimePayment($purchase, $guest, $package);
+
+        return $this->redirectToProvider($result);
+    }
+
+    /**
+     * @return array{0: Guest, 1: Package}
+     */
+    private function checkoutSelection(): array
+    {
+        $guest = Guest::findOrFail(session('checkout.guest_id'));
+        $package = Package::findOrFail(session('checkout.package_id'));
+
+        return [$guest, $package];
+    }
+
+    private function redirectToProvider(array $result): RedirectResponse
+    {
+        if (isset($result['error'])) {
+            return redirect()->away($result['redirect_url'])
+                ->with('error', 'Hubo un error, intentá de nuevo más tarde.');
+        }
+
+        return redirect()->away($result['redirect_url'])
+            ->with('success', '¡Bienvenidx! En breve te llegará un correo para terminar de crear tu usuario.');
     }
 }

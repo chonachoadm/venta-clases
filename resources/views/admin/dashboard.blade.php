@@ -21,6 +21,20 @@
             </form>
         </div>
 
+        <div>
+            <h2>Cotización del dólar</h2>
+            <form action="{{ route('exchange-rate.update') }}" method="post">
+                @csrf
+                <label for="exchange_rate">Pesos por dólar</label>
+                <input type="number" step="0.01" min="1" id="exchange_rate" name="exchange_rate"
+                    value="{{ old('exchange_rate', $exchangeRate) }}" required>
+                @error('exchange_rate')
+                    <span class="text-danger">{{ $message }}</span>
+                @enderror
+                <button type="submit">Guardar</button>
+            </form>
+        </div>
+
         <div class="table-responsive">
             <table class="table">
                 <thead>
@@ -42,6 +56,9 @@
                     @endforeach
                 </tbody>
             </table>
+            <div class="mt-4">
+                {{ $videos->links() }}
+            </div>
         </div>
         <div>
             <h2>
@@ -107,6 +124,9 @@
                         @endforeach
                     </tbody>
                 </table>
+                <div class="mt-4">
+                    {{ $users->links() }}
+                </div>
             </div>
         </div>
     </section>

@@ -2,41 +2,34 @@
 
 namespace App\Services;
 
-use App\Models\Subscription;
 use App\Models\Guest;
 use App\Models\Package;
+use App\Models\Purchase;
+use App\Models\Subscription;
 
 abstract class PaymentService
 {
     /**
      * Create a payment order/preference for the given purchase.
      *
-     * @param Purchase $purchase
      * @return array{redirect_url: string, order_id: string}
      */
     abstract public function createSubscription(Subscription $subscription, Guest $guest, Package $package): array;
 
     /**
-     * Verify and approve a payment after successful redirect.
+     * Create a one-time (non-recurring) payment order for the given purchase.
      *
-     * @param Subscription $subscription
-     * @return bool
+     * @return array{redirect_url: string, order_id: string}
      */
-    abstract public function verifySubscription(Subscription $subscription): bool;
+    abstract public function createOneTimePayment(Purchase $purchase, Guest $guest, Package $package): array;
 
     /**
-     * Verify webhook signature and return validated payload.
-     *
-     * @param array $payload
-     * @param string $signature
-     * @return array|null Validated payload or null if invalid
+     * Cancel an active recurring subscription with the provider.
      */
-    abstract public function verifyWebhook(array $payload, string $signature): ?array;
+    abstract public function cancelSubscriptionService(Subscription $subscription): bool;
 
     /**
      * Get provider name.
-     *
-     * @return string
      */
     abstract public function getProvider(): string;
 }

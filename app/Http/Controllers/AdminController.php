@@ -2,22 +2,33 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use App\Models\Video;
+use App\Models\Setting;
 use App\Models\User;
-use App\Models\Purchase;
+use App\Models\Video;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
     public function index()
     {
-        $videos = Video::all();
-        $users = User::all();
+        $videos = Video::paginate(5);
+        $users = User::paginate(5);
         $totalVideos = Video::count();
+        $exchangeRate = Setting::get('exchange_rate', config('services.exchange_rate', 960));
 
-        return view('admin.dashboard', compact('videos', 'users', 'totalVideos'));
+        return view('admin.dashboard', compact('videos', 'users', 'totalVideos', 'exchangeRate'));
+    }
+
+    public function updateExchangeRate(Request $request)
+    {
+        $validated = $request->validate([
+            'exchange_rate' => 'required|numeric|min:1',
+        ]);
+
+        Setting::set('exchange_rate', $validated['exchange_rate']);
+
+        return back()->with('success', 'Cotización actualizada correctamente.');
     }
 
     public function usersTable()

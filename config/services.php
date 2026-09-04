@@ -47,9 +47,12 @@ return [
 
     'paypal' => [
         'client_id' => env('PAYPAL_CLIENT_ID'),
-        'secret' => env('PAYPAL_SECRET'),
+        'client_secret' => env('PAYPAL_SECRET'),
+        'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
         'mode' => env('PAYPAL_MODE', 'sandbox'),
-        'exchange_rate' => env('PAYPAL_EXCHANGE_RATE', 960),
+        'base_url' => env('PAYPAL_BASE_URL', 'https://api-m.sandbox.paypal.com'),
     ],
+
+    'exchange_rate' => env('EXCHANGE_RATE', 960),
 
 ];

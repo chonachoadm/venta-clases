@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('packages', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->decimal('total_price', 10, 2);
-            $table->decimal('price_per_month', 10, 2);
+            $table->decimal('total_price', 10);
+            $table->decimal('price_per_month', 10);
             $table->integer('month_amount');
             $table->string('mercadopago_plan_id')->nullable();
             $table->string('paypal_plan_id')->nullable();

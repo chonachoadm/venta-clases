@@ -68,6 +68,18 @@ class User extends Authenticatable
         return $this->hasMany(Subscription::class);
     }
 
+    public function activePurchase()
+    {
+        return $this->hasOne(Purchase::class)
+            ->where('status', 'active')
+            ->where('expires_at', '>', now());
+    }
+
+    public function purchases(): HasMany
+    {
+        return $this->hasMany(Purchase::class);
+    }
+
     public function isAdmin()
     {
         return $this->role === 1;

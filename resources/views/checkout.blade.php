@@ -6,15 +6,15 @@
             <div class="package-card">
                 <h2>{{ $package->name }}</h2>
 
-                @if((24000 * $package->month_amount) != $package->total_price)
-                    <p><s>${{ 24000 * $package->month_amount }} ARS /
-                            ${{ round($package->month_amount * 24000 / config('services.paypal.exchange_rate')) }} USD</s></p>
+                @if((25 * $package->month_amount) != $package->total_price)
+                    <p><s>${{ 25 * $package->month_amount }} USD /
+                            ${{ round(25 * $package->month_amount * config('services.exchange_rate'), -3) }} ARS</s></p>
                 @endif
 
-                <p class="price">${{ $package->total_price }} ARS /
-                    ${{ round($package->total_price / config('services.paypal.exchange_rate')) }} USD</p>
-                <small> ${{ $package->price_per_month }} ARS /
-                    ${{ round($package->price_per_month / config('services.paypal.exchange_rate')) }} USD por mes</small>
+                <p class="price">${{ $package->total_price }} USD /
+                    ${{ $package->totalPriceArs() }} ARS</p>
+                <small> ${{ $package->price_per_month }} USD /
+                    ${{ $package->pricePerMonthArs() }} ARS por mes</small>
             </div>
         @endforeach
     </div>
@@ -34,7 +34,7 @@
                 </div>
             @endforeach
             @error('package_id')
-                <span class="error">{{ $message }}</span>
+                <span class="text-danger">{{ $message }}</span>
             @enderror
         </div>
 
@@ -45,15 +45,16 @@
                 <label for="name">Nombre</label>
                 <input type="text" id="name" name="name" value="{{ old('name') }}" required>
                 @error('name')
-                    <span class="error">{{ $message }}</span>
+                    <span class="text-danger">{{ $message }}</span>
                 @enderror
             </div>
 
             <div>
                 <label for="email">Correo electrónico</label>
-                <input type="email" id="email" name="email" value="{{ old('email') }}" required onBlur="">
+                <input type="email" id="email" name="email" value="{{ old('email') }}" required>
+                <small>El correo debe estar registrado en una cuenta de MercadoPago o de PayPal</small>
                 @error('email')
-                    <span class="error">{{ $message }}</span>
+                    <span class="text-danger">{{ $message }}</span>
                 @enderror
             </div>
 
@@ -61,7 +62,7 @@
                 <label for="phone">Número de telefono</label>
                 <input type="tel" id="phone" name="phone" value="{{ old('phone') }}" required>
                 @error('phone')
-                    <span class="error">{{ $message }}</span>
+                    <span class="text-danger">{{ $message }}</span>
                 @enderror
             </div>
         </div>

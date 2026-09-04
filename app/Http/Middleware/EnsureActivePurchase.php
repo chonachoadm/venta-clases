@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use App\Models\User;
 
 class EnsureActivePurchase
 {
@@ -18,16 +17,16 @@ class EnsureActivePurchase
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('index')
-            ->with('message', 'Tenés que iniciar sesión.');
+                ->with('message', 'Tenés que iniciar sesión.');
         }
 
         if ($user->isAdmin()) {
             return $next($request);
         }
 
-        if ($user->activeSubscription()->doesntExist()) {
+        if ($user->activeSubscription()->doesntExist() && $user->activePurchase()->doesntExist()) {
             return redirect()->route('index')
                 ->with('error', 'No tenés una compra activa en este momento.');
         }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Purchase;
 use App\Models\Subscription;
 use App\Services\PaymentServiceFactory;
 use Illuminate\Http\Request;
@@ -13,20 +14,17 @@ class AdminSubscriptionController extends Controller
      */
     public function index(Request $request)
     {
-        $subscriptions = Subscription::query()
-            ->when($request->filter === '1', function ($query) {
-                $query->where('package_id', 1);
-            })
-            ->when($request->filter === '3', function ($query) {
-                $query->where('package_id', 3);
-            })
-            ->when($request->filter === '6', function ($query) {
-                $query->where('package_id', 6);
-            })
-            ->when($request->filter === '12', function ($query) {
-                $query->where('package_id', 12);
-            })
+        $filterPackageId = in_array($request->filter, ['1', '3', '6', '12'], true) ? (int) $request->filter : null;
+
+        $subscriptions = Subscription::with(['user', 'guest', 'package'])
+            ->when($filterPackageId, fn ($query) => $query->where('package_id', $filterPackageId))
             ->get();
+
+        $purchases = Purchase::with(['user', 'guest', 'package'])
+            ->when($filterPackageId, fn ($query) => $query->where('package_id', $filterPackageId))
+            ->get();
+
+        $subscriptions = $subscriptions->concat($purchases)->sortByDesc('created_at')->values();
 
         return view('admin.subscriptions.index', compact('subscriptions'));
     }
@@ -81,9 +79,8 @@ class AdminSubscriptionController extends Controller
 
     public function cancelSubscription(Subscription $subscription)
     {
-        // dd($subscription);
-        $paymentService = PaymentServiceFactory::make('mercadopago');
-        
+        $paymentService = PaymentServiceFactory::make($subscription->provider);
+
         try {
             $paymentService->cancelSubscriptionService($subscription);
 
@@ -101,8 +98,15 @@ class AdminSubscriptionController extends Controller
             ]);
 
             return back()->withErrors([
-                'subscription' => 'No se pudo cancelar la suscripción. Intentá nuevamente.'
+                'subscription' => 'No se pudo cancelar la suscripción. Intentá nuevamente.',
             ]);
         }
+    }
+
+    public function cancelPurchase(Purchase $purchase)
+    {
+        $purchase->update(['status' => 'cancelled']);
+
+        return back()->with('success', 'La compra fue cancelada correctamente.');
     }
 }

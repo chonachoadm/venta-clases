@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
+use MercadoPago\MercadoPagoConfig;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Paginator::useBootstrapFive();
+
+        // The MercadoPago SDK relies on this static config being set for every request, not just when MercadoPagoPaymentService is instantiated.
+        if ($token = config('services.mercadopago.access_token')) {
+            MercadoPagoConfig::setAccessToken($token);
+        }
     }
 }

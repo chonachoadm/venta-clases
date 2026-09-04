@@ -3,125 +3,70 @@
 namespace App\Http\Controllers;
 
 use App\Models\Purchase;
+use App\Services\AccessGrantService;
+use App\Services\PayPalPaymentService;
 use Illuminate\Http\Request;
-use App\Models\PaymentIntent;
-use App\Services\PaymentServiceFactory;
 
 class PaymentController extends Controller
 {
+    public function __construct(
+        private AccessGrantService $accessGrantService,
+        private PayPalPaymentService $payPalPaymentService,
+    ) {}
 
-    public function start(Purchase $purchase, string $provider)
-    {
-        if (!in_array($provider, ['mercadopago', 'paypal'])) {
-            abort(404);
-        }
-        try {
-            $paymentIntent = PaymentIntent::create([
-                'purchase_id' => $purchase->id,
-                'provider' => $provider,
-                'status' => 'pending',
-            ]);
-
-            $paymentService = PaymentServiceFactory::make($provider);
-            $paymentData = $paymentService->createPayment($purchase);
-
-            $paymentIntent->update([
-                'external_id' => $paymentData['order_id'],
-            ]);
-
-            return redirect()->away($paymentData['redirect_url']);
-        } catch (\Throwable $th) {
-            $paymentIntent->update([
-                'status' => 'failed',
-            ]);
-
-            throw $th;
-        }
-    }
     /**
-     * Handle successful payment return from any provider
+     * Handle the buyer's return from a payment provider.
      */
     public function success(Request $request)
     {
-        $paymentIntent = null;
-
-        // MERCADOPAGO
-        if ($request->has('preference_id')) {
-            $paymentIntent = PaymentIntent::where('external_id', $request->get('preference_id'))->first();
+        // PayPal one-time (Orders v2) requires an explicit capture call once the buyer approves.
+        if ($request->filled('token') && $request->filled('PayerID')) {
+            return $this->capturePayPalOrder($request->string('token'));
         }
+        
 
-        // PAYPAL (nuevo flujo)
-        if ($request->has('purchase_id')) {
-            $paymentIntent = PaymentIntent::where('purchase_id', $request->get('purchase_id'))
-                ->where('provider', 'paypal')
-                ->first();
-        }
-
-        if (!$paymentIntent) {
-            return redirect()->route('payment.failure');
-        }
-
-        $purchase = $paymentIntent->purchase;
-
-        if (!$purchase) {
-            return redirect()->route('payment.failure');
-        }
-
-        $paymentService = PaymentServiceFactory::make($paymentIntent->provider);
-
-        $isValid = false;
-
-        if ($paymentIntent->provider === 'paypal') {
-
-            $response = $paymentService->completePayment(
-                $request->get('token')
-            );
-
-            $isValid = ($response['status'] ?? null) === 'COMPLETED';
-        }
-
-        if ($paymentIntent->provider === 'mercadopago') {
-
-            $isValid = true;
-        }
-
-        if (!$isValid) {
-            return redirect()->route('payment.failure');
-        }
-
-        $paymentIntent->update([
-            'status' => 'approved',
-        ]);
-
-        $purchase->update([
-            'status' => 'approved',
-        ]);
-
-        return view('payment-success', [
-            'email' => $purchase->guest->email,
-            'name' => $purchase->guest->name,
-            'phone' => $purchase->guest->phone,
-            'purchase' => $purchase,
-        ]);
+        // PayPal subscription approval and MercadoPago (either flow) are activated via webhook.
+        return redirect()->route('index')
+            ->with('success', '¡Listo! En breve te llegará un correo para terminar de crear tu usuario.');
     }
 
-    /**
-     * Handle failed payment return from any provider
-     */
     public function failure(Request $request)
     {
-        return view('payment-failure', [
-            'paymentId' => $request->query('preference_id') ?? $request->query('token'),
-        ]);
+        return redirect()->route('index')
+            ->with('error', 'El pago no pudo completarse. Intentá de nuevo más tarde.');
     }
 
-    /**
-     * Handle pending payment return from any provider
-     */
     public function pending(Request $request)
     {
-        return view('payment-pending', [
-            'paymentId' => $request->query('preference_id') ?? $request->query('token'),
-        ]);
+        return redirect()->route('index')
+            ->with('message', 'Tu pago está pendiente de confirmación.');
+    }
+
+    private function capturePayPalOrder(string $orderId)
+    {
+        $purchase = Purchase::where('external_id', $orderId)->first();
+
+        if (! $purchase) {
+            return redirect()->route('payment.failure');
+        }
+
+        if ($purchase->status !== 'active') {
+            try {
+                $response = $this->payPalPaymentService->completePayment($orderId);
+            } catch (\Throwable $e) {
+                \Log::error('PayPal capture error', ['message' => $e->getMessage()]);
+
+                return redirect()->route('payment.failure');
+            }
+
+            if (($response['status'] ?? null) !== 'COMPLETED') {
+                return redirect()->route('payment.failure');
+            }
+
+            $this->accessGrantService->activatePurchase($purchase, $orderId);
+        }
+
+        return redirect()->route('index')
+            ->with('success', '¡Listo! En breve te llegará un correo para terminar de crear tu usuario.');
     }
 }
