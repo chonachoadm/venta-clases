@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Video;
-use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class VideoController extends Controller
@@ -19,12 +18,9 @@ class VideoController extends Controller
     {
         $user = Auth::user();
         $videos = Video::all();
+        $watchedVideoIds = $user->watchedVideos()->pluck('videos.id')->all();
 
-        $user->watchedVideos()->syncWithoutDetaching($videos->pluck('id'));
-
-        $videos = $user->watchedVideos()->get();
-
-        return view('user.videos.index', compact('videos'));
+        return view('user.videos.index', compact('videos', 'watchedVideoIds'));
     }
 
     public function showGuest(Video $video)
@@ -34,14 +30,11 @@ class VideoController extends Controller
 
     public function showUser(Video $video)
     {
-        $user = Auth::user();
+        $watched = Auth::user()->watchedVideos()->where('videos.id', $video->id)->exists();
 
-        $user->watchedVideos()->syncWithoutDetaching([$video->id]);
-
-        $video = $user->watchedVideos()->find($video->id);
-
-        return view('user.videos.show', compact('video'));
+        return view('user.videos.show', compact('video', 'watched'));
     }
+
     public function showAdmin(Video $video)
     {
         $nonViewers = $video->nonViewers()->get();
@@ -52,10 +45,15 @@ class VideoController extends Controller
     public function updateWatched(Video $video)
     {
         $watched = request()->boolean('watched');
+        $user = Auth::user();
 
-        Auth::user()->watchedVideos()->updateExistingPivot($video->id, [
-            'watched_at' => $watched ? now() : null,
-        ]);
+        if ($watched) {
+            $user->watchedVideos()->syncWithoutDetaching([
+                $video->id => ['watched_at' => now()],
+            ]);
+        } else {
+            $user->watchedVideos()->detach($video->id);
+        }
 
         return redirect()->route('videos')->with('success', 'Clase completada exitósamente.');
     }

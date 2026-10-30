@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Models\Module;
 use App\Models\User;
-use App\Models\Category;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -27,14 +27,14 @@ class DatabaseSeeder extends Seeder
             'role' => 1,
         ]);
 
-        Category::create([
+        Module::create([
             'name' => 'all',
             'description' => 'Every video available.',
         ]);
 
         Artisan::call('youtube:import', [
             'playlistId' => 'PLLNFRn-GVWb0Z-FdpMU3bHoVOIOPufyg5',
-            'categoryId' => 1,
+            'moduleId' => 1,
         ]);
     }
 }

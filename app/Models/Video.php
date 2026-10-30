@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Laravel\Scout\Searchable;
 
 class Video extends Model
 {
+    use Searchable;
     protected $fillable = [
-        'category_id',
+        'module_id',
         'title',
         'description',
         'video_id',
@@ -15,16 +18,29 @@ class Video extends Model
         'order_index',
     ];
 
+    public function module(): BelongsTo
+    {
+        return $this->belongsTo(Module::class);
+    }
 
     public function viewers()
     {
         return $this->belongsToMany(User::class)
             ->withPivot('watched_at');
     }
+
     public function nonViewers()
     {
         return User::whereDoesntHave('watchedVideos', function ($query) {
             $query->where('videos.id', $this->id);
         });
+    }
+
+    public function toSearchableArray(): array
+    {
+        return [
+            'title' => $this->title,
+            'description' => $this->description,
+        ];
     }
 }

@@ -60,7 +60,7 @@ class AdminUserController extends Controller
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
 
-        $user = User::create([
+        User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'phone' => $validatedData['phone'],
@@ -68,7 +68,7 @@ class AdminUserController extends Controller
             'role' => $request->role,
         ]);
 
-        return redirect()->route('users.index')->with('success', 'Usuario creado exitósamente.');
+        return redirect()->route('usuarios.index')->with('success', 'Usuario creado exitósamente.');
     }
 
     /**
@@ -119,7 +119,7 @@ class AdminUserController extends Controller
             'role' => $request->role,
         ]);
 
-        return redirect()->route('users.table')->with('success', 'Usuario actualizado exitósamente.');
+        return redirect()->route('usuarios.index')->with('success', 'Usuario actualizado exitósamente.');
     }
 
     /**
@@ -130,6 +130,6 @@ class AdminUserController extends Controller
         $user = User::where('id', $id)->first();
         $user->delete();
 
-        return redirect()->route('users.table')->with('success', 'Usuario eliminado correctamente.');
+        return redirect()->route('usuarios.index')->with('success', 'Usuario eliminado correctamente.');
     }
 }

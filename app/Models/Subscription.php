@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Subscription extends Model
 {
@@ -36,7 +35,7 @@ class Subscription extends Model
     {
         return $this->belongsTo(Guest::class);
     }
-    
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -47,10 +46,5 @@ class Subscription extends Model
         return $this->status === 'active'
             && $this->expires_at
             && $this->expires_at->isFuture();
-    }
-
-    public function paymentIntents(): HasMany
-    {
-        return $this->hasMany(PaymentIntent::class);
     }
 }

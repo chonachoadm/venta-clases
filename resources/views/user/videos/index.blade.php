@@ -27,7 +27,7 @@
         <h2>{{ $video->title }}</h2>
         <img src="{{ $video->thumbnail_url }}" alt="$video->title">
         <a href="{{ route('selectedVideo', $video) }}">Ver</a>
-        @if($video->pivot->watched_at !== null)
+        @if(in_array($video->id, $watchedVideoIds))
         <p><em>Clase vista</em></p>
         @endif
     </div>

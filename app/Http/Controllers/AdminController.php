@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Module;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\Video;
@@ -10,14 +11,17 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $videos = Video::paginate(5);
+        $search = $request->query('search', '');
+
+        $videos = Video::search($search)->get();
         $users = User::paginate(5);
         $totalVideos = Video::count();
         $exchangeRate = Setting::get('exchange_rate', config('services.exchange_rate', 960));
+        $modules = Module::all();
 
-        return view('admin.dashboard', compact('videos', 'users', 'totalVideos', 'exchangeRate'));
+        return view('admin.dashboard', compact('videos', 'users', 'totalVideos', 'exchangeRate', 'modules'));
     }
 
     public function updateExchangeRate(Request $request)

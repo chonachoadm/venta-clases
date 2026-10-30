@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminModuleController;
 use App\Http\Controllers\AdminSubscriptionController;
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AdminVideoController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\PaymentController;
@@ -52,6 +54,9 @@ Route::middleware('admin')->group(function () {
     Route::post('/admin/exchange-rate', [AdminController::class, 'updateExchangeRate'])->name('exchange-rate.update');
     Route::get('/admin/videos', [AdminController::class, 'videosTable'])->name('videos.table');
     Route::resource('/admin/usuarios', AdminUserController::class);
+    Route::resource('/admin/modulos', AdminModuleController::class)->parameters(['modulos' => 'module']);
+    Route::post('/admin/videos/importar-playlist', [AdminVideoController::class, 'importPlaylist'])->name('videos.import-playlist');
+    Route::post('/admin/videos/importar-video', [AdminVideoController::class, 'importVideo'])->name('videos.import-video');
     Route::resource('/admin/suscripciones', AdminSubscriptionController::class);
     Route::post('/admin/suscripciones/{subscription}/cancelar', [AdminSubscriptionController::class, 'cancelSubscription'])->name('subscriptions.cancel');
     Route::post('/admin/compras/{purchase}/cancelar', [AdminSubscriptionController::class, 'cancelPurchase'])->name('purchases.cancel');

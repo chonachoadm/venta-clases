@@ -15,12 +15,6 @@
           <a class="nav-link" href="{{ route('videos') }}">Clases</a>
         </li>
         <li class="nav-item">
-          <form action="{{ route('logout') }}" method="post">
-            @csrf
-            <button type="submit">Cerrar sesión</button>
-          </form>
-        </li>
-        <li class="nav-item">
           <a class="nav-link" href="{{ route('dashboard') }}">Dashboard</a>
         </li>
         <li class="nav-item">
@@ -28,6 +22,12 @@
         </li>
         <li class="nav-item">
           <a class="nav-link" href="{{ route('suscripciones.index') }}">Compras</a>
+        </li>
+        <li class="nav-item">
+          <form action="{{ route('logout') }}" method="post">
+            @csrf
+            <button type="submit">Cerrar sesión</button>
+          </form>
         </li>
       </ul>
     </div>

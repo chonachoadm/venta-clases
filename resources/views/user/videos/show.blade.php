@@ -18,7 +18,7 @@
         @csrf
         <div>
             <label for="watched">Clase hecha</label>
-            <input type="checkbox" name="watched" id="watched" {{ $video->pivot->watched_at !== null ? 'checked' : '' }}
+            <input type="checkbox" name="watched" id="watched" {{ $watched ? 'checked' : '' }}
             onchange="this.form.submit()">
         </div>
     </form>

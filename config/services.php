@@ -40,6 +40,10 @@ return [
         'public_key' => env('MERCADOPAGO_PUBLIC_KEY'),
     ],
 
+    'youtube' => [
+        'api_key' => env('YOUTUBE_API_KEY'),
+    ],
+
     'cloudflare' => [
         'account_id' => env('CLOUDFLARE_ACCOUNT_ID'),
         'key' => env('CLOUDFLARE_KEY'),
