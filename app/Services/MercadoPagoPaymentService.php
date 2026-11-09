@@ -16,7 +16,7 @@ class MercadoPagoPaymentService extends PaymentService
     public function __construct()
     {
         $token = config('services.mercadopago.access_token');
-        if (!$token) {
+        if (! $token) {
             throw new \Exception('Mercado Pago access token not configured. Please set MERCADOPAGO_ACCESS_TOKEN in .env');
         }
         MercadoPagoConfig::setAccessToken($token);
@@ -27,7 +27,6 @@ class MercadoPagoPaymentService extends PaymentService
 
         $payerEmail = $guest->email;
 
-        \Log::info('EMAIL CAPTURED', ['email' => $payerEmail]);
         try {
             $response = Http::withToken(config('services.mercadopago.access_token'))
                 ->post('https://api.mercadopago.com/preapproval', [
@@ -35,6 +34,7 @@ class MercadoPagoPaymentService extends PaymentService
                     'reason' => $package->name,
                     'external_reference' => (string) $subscription->id,
                     'payer_email' => $payerEmail,
+                    'notification_url' => route('webhooks.mercadopago', ['source_news' => 'webhooks']),
                     'auto_recurring' => [
                         'frequency' => $package->month_amount,
                         'frequency_type' => 'months',
@@ -45,9 +45,8 @@ class MercadoPagoPaymentService extends PaymentService
                 ]);
 
             $data = $response->json();
-            \Log::info('MP FULL RESPONSE', $data);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 throw new \Exception($data['message'] ?? 'Error al crear la suscripción.');
             }
 
@@ -90,13 +89,13 @@ class MercadoPagoPaymentService extends PaymentService
                         'failure' => route('payment.failure'),
                         'pending' => route('payment.pending'),
                     ],
-                    'notification_url' => route('webhooks.mercadopago'),
-                    'auto_return' => 'approved'
+                    'notification_url' => route('webhooks.mercadopago', ['source_news' => 'webhooks']),
+                    'auto_return' => 'approved',
                 ]);
 
             $data = $response->json();
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 throw new \Exception($data['message'] ?? 'Error al crear el pago.');
             }
 
@@ -104,7 +103,6 @@ class MercadoPagoPaymentService extends PaymentService
                 'external_id' => $data['id'],
             ]);
 
-            // \Log::info('Init Point');
             return [
                 'redirect_url' => $data['init_point'],
             ];
@@ -123,7 +121,7 @@ class MercadoPagoPaymentService extends PaymentService
 
     public function cancelSubscriptionService(Subscription $subscription): bool
     {
-        if (!$subscription->external_id) {
+        if (! $subscription->external_id) {
             throw new \Exception('La suscripción no tiene un ID de Mercado Pago.');
         }
 
@@ -135,7 +133,7 @@ class MercadoPagoPaymentService extends PaymentService
                 ]
             );
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             \Log::error('Error cancelando suscripción de Mercado Pago', [
                 'subscription_id' => $subscription->id,
                 'external_id' => $subscription->external_id,

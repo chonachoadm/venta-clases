@@ -18,6 +18,9 @@
           <a class="nav-link" href="{{ route('dashboard') }}">Dashboard</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" href="{{ route('videos.table') }}">Gestionar clases</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" href="{{ route('usuarios.index') }}">Usuarios</a>
         </li>
         <li class="nav-item">

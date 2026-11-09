@@ -1,59 +1,96 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Gi Braier Clases
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel 12 site that sells access to a library of recorded classes (videos hosted on YouTube).
+Visitors browse the catalog and buy a plan with MercadoPago or PayPal, either as a subscription or as a one-time payment.
+The account is created automatically after the payment is confirmed. The interface is in Spanish.
 
-## About Laravel
+## How it works
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+1. A visitor picks a package (1, 3, 6 or 12 months) at `/checkout`, enters name, email and phone, and chooses MercadoPago or PayPal, as a subscription or a one-time payment. A pending `Subscription` or `Purchase` is created for a `Guest`.
+2. The provider confirms the payment through a webhook (or, for PayPal one-time orders, when the buyer returns to the site). `AccessGrantService` then creates the user, activates the order and sets `expires_at`.
+3. A new customer receives an email with a button to choose a password (single-use link, valid 24 hours). Nobody is ever emailed a password. Until the password is set the account has an unknown random one.
+4. Subscribers keep access while the provider keeps charging: every approved recurring charge extends `expires_at` by the package period.
+5. Members watch the classes at `/videos`. A subscription cancelled by the customer through the provider keeps its access until `expires_at`; when an admin cancels a subscription or a purchase the access ends immediately. Admins manage classes, users, modules and orders under `/admin`.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Roles are stored in `users.role`: `1` administrator, `2` student.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Requirements
 
-## Learning Laravel
+- PHP 8.2+, Composer
+- MySQL (production) or SQLite (tests use an in-memory SQLite database)
+- A queue worker in production (`php artisan queue:work`): the welcome email is queued
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Setup
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+# create the database named in DB_DATABASE, then:
+php artisan migrate
+php artisan db:seed --class=PackageSeeder
+```
 
-## Laravel Sponsors
+`php artisan db:seed` also creates an administrator (`admin@user.com`) with a well known password and imports a YouTube playlist: use it only on a local database and change that password, or create your own admin through the panel.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+For local development `composer dev` starts the server and a queue listener.
 
-### Premium Partners
+## Environment variables
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+| Variable | Purpose |
+|----------|---------|
+| `APP_URL` | Public URL. Used to build the return and webhook URLs sent to the providers |
+| `QUEUE_CONNECTION` | `database` by default: a worker must be running |
+| `MAIL_*` | SMTP settings for the welcome and password emails |
+| `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_PUBLIC_KEY` | MercadoPago credentials |
+| `MERCADOPAGO_WEBHOOK_SECRET` | Secret of the MercadoPago webhook. **Required**: without it every MercadoPago webhook is rejected |
+| `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET` | PayPal REST credentials |
+| `PAYPAL_WEBHOOK_ID` | Id of the PayPal webhook. **Required**: without it every PayPal webhook is rejected |
+| `PAYPAL_MODE`, `PAYPAL_BASE_URL` | `sandbox` and `https://api-m.sandbox.paypal.com`, or the live equivalents |
+| `YOUTUBE_API_KEY` | YouTube Data API key used to import classes |
+| `EXCHANGE_RATE` | Default USD to ARS rate. The admin dashboard can override it |
 
-## Contributing
+## Payment providers
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Prices are stored in USD. The ARS price shown and charged by MercadoPago is the USD price times the exchange rate, rounded to the nearest thousand. Running subscriptions keep charging the price fixed when they were created.
 
-## Code of Conduct
+### Webhooks
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Provider | URL | Events to enable |
+|----------|-----|------------------|
+| MercadoPago | `POST {APP_URL}/webhooks/mercadopago` | Payments (`payment`), subscriptions (`subscription_preapproval`) and recurring subscription payments (`subscription_authorized_payment`). Signed with `MERCADOPAGO_WEBHOOK_SECRET` |
+| PayPal | `POST {APP_URL}/payment/paypal-webhook` | `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.CANCELLED`, `PAYMENT.SALE.COMPLETED`, `PAYMENT.CAPTURE.COMPLETED`. Verified with `PAYPAL_WEBHOOK_ID` |
 
-## Security Vulnerabilities
+Without the recurring events the first period works but subscriptions are never renewed.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### PayPal plans
 
-## License
+PayPal subscriptions need a billing plan per package. Create them once (and after adding a package):
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+php artisan paypal:provision-plans
+```
+
+## Console commands
+
+| Command | Purpose |
+|---------|---------|
+| `php artisan youtube:import {playlistId} {moduleId}` | Import a YouTube playlist into a module (the admin dashboard does the same) |
+| `php artisan paypal:provision-plans [--force]` | Create the PayPal product and plan of each package |
+
+## Tests
+
+```bash
+php artisan test --compact
+```
+
+The suite uses an in-memory SQLite database and fakes every call to MercadoPago, PayPal and YouTube. It also runs on every push through GitHub Actions (`.github/workflows/tests.yml`).
+
+Code style: `vendor/bin/pint`.
+
+## Before going live
+
+- Run `php artisan migrate` before deploying new code.
+- Run a queue worker and keep it running.
+- Set both webhook secrets and enable all the events listed above.
+- Make a sandbox purchase, a sandbox renewal and a cancellation with each provider.

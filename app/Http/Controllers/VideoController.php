@@ -9,7 +9,7 @@ class VideoController extends Controller
 {
     public function indexGuest()
     {
-        $videos = Video::all();
+        $videos = Video::orderBy('module_id')->orderBy('order_index')->paginate(12);
 
         return view('guest.videos.index', compact('videos'));
     }
@@ -17,7 +17,7 @@ class VideoController extends Controller
     public function indexUser()
     {
         $user = Auth::user();
-        $videos = Video::all();
+        $videos = Video::orderBy('module_id')->orderBy('order_index')->paginate(12);
         $watchedVideoIds = $user->watchedVideos()->pluck('videos.id')->all();
 
         return view('user.videos.index', compact('videos', 'watchedVideoIds'));

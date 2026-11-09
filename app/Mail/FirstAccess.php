@@ -4,13 +4,12 @@ namespace App\Mail;
 
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Mail\Mailables\Address;
 
 class FirstAccess extends Mailable
 {
@@ -21,9 +20,8 @@ class FirstAccess extends Mailable
      */
     public function __construct(
         public User $user,
-        public string $password
-        )
-    {}
+        public string $setPasswordUrl
+    ) {}
 
     /**
      * Get the message envelope.
@@ -33,9 +31,9 @@ class FirstAccess extends Mailable
         return new Envelope(
             from: new Address(
                 env('MAIL_FROM_ADDRESS', 'chonacholopez99@gmail.com'),
-                env('MAIL_FROM_NAME', 'Gi Braier Clases')
+                env('MAIL_FROM_NAME', 'Venta de Clases')
             ),
-            subject: 'Completá tu registro',
+            subject: 'Creá tu contraseña para empezar',
         );
     }
 
@@ -47,7 +45,7 @@ class FirstAccess extends Mailable
         return new Content(
             view: 'mail.first-access',
             with: [
-                'password' => $this->password
+                'setPasswordUrl' => $this->setPasswordUrl,
             ],
         );
     }

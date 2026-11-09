@@ -6,6 +6,9 @@ use App\Models\Guest;
 use App\Models\Package;
 use App\Models\Purchase;
 use App\Models\Subscription;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -20,6 +23,24 @@ class PayPalPaymentService extends PaymentService
         // $this->gateway->setSecret(config('services.paypal.secret'));
         // $this->gateway->setTestMode(config('services.paypal.mode') === 'sandbox');
         $this->baseUrl = config('services.paypal.base_url');
+    }
+
+    private function http(bool $retry = false): PendingRequest
+    {
+        $request = Http::timeout(15)->connectTimeout(5);
+
+        if (! $retry) {
+            return $request;
+        }
+
+        // Only used for requests that are safe to repeat; retries network errors and 5xx, never 4xx.
+        return $request->retry(
+            2,
+            300,
+            fn (\Throwable $e) => $e instanceof ConnectionException
+                || ($e instanceof RequestException && $e->response->serverError()),
+            throw: false,
+        );
     }
 
     private function getAccessToken()
@@ -43,7 +64,7 @@ class PayPalPaymentService extends PaymentService
 
         // return $result['access_token'];
 
-        $response = Http::asForm()
+        $response = $this->http(retry: true)->asForm()
             ->withBasicAuth(
                 config('services.paypal.client_id'),
                 config('services.paypal.client_secret')
@@ -61,7 +82,7 @@ class PayPalPaymentService extends PaymentService
     {
         $accessToken = $this->getAccessToken();
 
-        $response = Http::withToken($accessToken)
+        $response = $this->http()->withToken($accessToken)
             ->withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
@@ -87,7 +108,7 @@ class PayPalPaymentService extends PaymentService
         $accessToken = $this->getAccessToken();
         $product = $this->createProduct($package);
 
-        $response = Http::withToken($accessToken)
+        $response = $this->http()->withToken($accessToken)
             ->withHeaders([
                 'PayPal-Request-Id' => uniqid(),
             ])
@@ -128,14 +149,14 @@ class PayPalPaymentService extends PaymentService
 
     public function createSubscription(Subscription $subscription, Guest $guest, Package $package): array
     {
-        if (! $package->paypal_plan_id) {
-            throw new \Exception('Este paquete no tiene un plan de PayPal provisionado. Ejecutá `php artisan paypal:provision-plans`.');
-        }
-
         try {
+            if (! $package->paypal_plan_id) {
+                throw new \Exception('Este paquete no tiene un plan de PayPal provisionado. Ejecutá `php artisan paypal:provision-plans`.');
+            }
+
             $accessToken = $this->getAccessToken();
 
-            $response = Http::withToken($accessToken)
+            $response = $this->http()->withToken($accessToken)
                 ->withHeaders(['PayPal-Request-Id' => uniqid()])
                 ->post($this->baseUrl.'/v1/billing/subscriptions', [
                     'plan_id' => $package->paypal_plan_id,
@@ -175,7 +196,7 @@ class PayPalPaymentService extends PaymentService
         try {
             $accessToken = $this->getAccessToken();
 
-            $response = Http::withToken($accessToken)
+            $response = $this->http()->withToken($accessToken)
                 ->withHeaders(['PayPal-Request-Id' => uniqid()])
                 ->post($this->baseUrl.'/v2/checkout/orders', [
                     'intent' => 'CAPTURE',
@@ -227,7 +248,7 @@ class PayPalPaymentService extends PaymentService
 
         $accessToken = $this->getAccessToken();
 
-        $response = Http::withToken($accessToken)
+        $response = $this->http()->withToken($accessToken)
             ->post($this->baseUrl."/v1/billing/subscriptions/{$subscription->external_id}/cancel", [
                 'reason' => 'Cancelada por el administrador',
             ]);
@@ -277,14 +298,14 @@ class PayPalPaymentService extends PaymentService
         $webhookId = config('services.paypal.webhook_id');
 
         if (! $webhookId) {
-            \Log::warning('PayPal webhook signature check skipped: PAYPAL_WEBHOOK_ID not configured');
+            \Log::warning('PayPal webhook rejected: PAYPAL_WEBHOOK_ID not configured');
 
             return false;
         }
 
         $accessToken = $this->getAccessToken();
 
-        $response = Http::withToken($accessToken)
+        $response = $this->http(retry: true)->withToken($accessToken)
             ->post($this->baseUrl.'/v1/notifications/verify-webhook-signature', [
                 'auth_algo' => $request->header('paypal-auth-algo'),
                 'cert_url' => $request->header('paypal-cert-url'),
@@ -311,7 +332,7 @@ class PayPalPaymentService extends PaymentService
         $accessToken = $this->getAccessToken();
 
         // An empty PHP array serializes to a JSON array ([]) rather than the empty object ({}) PayPal expects here.
-        $response = Http::withToken($accessToken)
+        $response = $this->http()->withToken($accessToken)
             ->withBody('{}', 'application/json')
             ->post($this->baseUrl."/v2/checkout/orders/{$orderId}/capture");
 

@@ -11,7 +11,6 @@ class AdminModuleController extends Controller
     {
         $modules = Module::withCount('videos')->get();
 
-        // dd($modules);
         return view('admin.modules.index', compact('modules'));
     }
 

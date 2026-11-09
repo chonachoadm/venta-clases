@@ -31,7 +31,7 @@
                 <p><strong>Teléfono: </strong>{{ $user->phone }}</p>
             </li>
             <li>
-                <p><strong>Clases vistas: </strong>{{ $user->watchedVideos()->whereNotNull('watched_at')->count() }} de {{ $totalVideos }} ({{ round($user->watchedVideos()->whereNotNull('watched_at')->count() / $totalVideos * 100)}}%)</p>
+                <p><strong>Clases vistas: </strong>{{ $user->watchedVideos()->whereNotNull('watched_at')->count() }} de {{ $totalVideos }} ({{ $user->watchedPercentage($totalVideos) }}%)</p>
                 <div class="d-flex">
                     @foreach ($user->watchedVideos as $video)
                     <div>
@@ -48,7 +48,7 @@
         <ul>
             @if($activeSubscription)
             <li>
-                <p><strong>Plan adquirido: </strong>{{ $activeSubscription->package->name }}</p>
+                <p><strong>Plan adquirido: </strong>{{ $activeSubscription->package?->name }} (suscripción)</p>
             </li>
             <li>
                 <p><strong>Fecha de compra: </strong>{{ $activeSubscription->created_at->format('d/m/Y') }}</p>
@@ -56,11 +56,23 @@
             <li>
                 <p><strong>Fecha del siguiente pago: </strong>{{ $activeSubscription->expires_at->format('d/m/Y') }}</p>
             </li>
-            @else
+            @endif
+            @if($activePurchase)
+            <li>
+                <p><strong>Plan adquirido: </strong>{{ $activePurchase->package?->name }} (pago único)</p>
+            </li>
+            <li>
+                <p><strong>Fecha de compra: </strong>{{ $activePurchase->created_at->format('d/m/Y') }}</p>
+            </li>
+            <li>
+                <p><strong>Acceso hasta: </strong>{{ $activePurchase->expires_at->format('d/m/Y') }}</p>
+            </li>
+            @endif
+            @unless($activeSubscription || $activePurchase)
             <li>
                 <p><em>Este usuario no tiene planes activos</em></p>
             </li>
-            @endif
+            @endunless
         </ul>
         <div class="row">
             <h4>Contactar</h4>

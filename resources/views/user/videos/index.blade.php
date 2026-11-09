@@ -25,13 +25,17 @@
     @foreach($videos as $video)
     <div>
         <h2>{{ $video->title }}</h2>
-        <img src="{{ $video->thumbnail_url }}" alt="$video->title">
+        <img src="{{ $video->thumbnail_url }}" alt="{{ $video->title }}">
         <a href="{{ route('selectedVideo', $video) }}">Ver</a>
         @if(in_array($video->id, $watchedVideoIds))
         <p><em>Clase vista</em></p>
         @endif
     </div>
     @endforeach
+</div>
+
+<div>
+    {{ $videos->links() }}
 </div>
 
 @endsection

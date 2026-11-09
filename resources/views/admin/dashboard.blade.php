@@ -40,13 +40,14 @@
             </form>
         </div>
 
-        <div class="row my-4 border px-4 py-2 bg-primary-subtle">
+        <div class="row my-4 border p-4 bg-primary-subtle">
             <div class="col-12">
-                <div class="row justify-content-center">
-                    <div class="col-12 col-md-10 my-2">
+                <div class="row justify-content-around">
+                    <div class="col-12 col-md-5 my-2">
                         <h2 class="mb-0 fw-bold">Módulos</h2>
                         <a href="{{ route('modulos.index') }}">Gestionar módulos</a>
                     </div>
+                    <div class="d-none d-md-block col-12 col-md-5"></div>
                 </div>
 
                 <div class="row justify-content-around">
@@ -140,85 +141,31 @@
             <div class="col-12">
                 <div class="row justify-content-center">
                     <div class="col-12 col-md-10 my-2">
-                        <div class="d-flex align-items-center gap-4">
-                            <h2 class="mb-0 fw-bold">Clases</h2>
-                            <form action="{{ route('dashboard') . '#clases' }}" method="get" class="d-flex align-items-center">
-                                <div>
-                                    <input type="text" name="search" id="search" aria-label="Buscador de clase"
-                                    placeholder="Buscá por título" class="border border-end-0 rounded-start-2 py-1 px-2">
-                                </div>
-                                <div>
-                                    <button type="submit"
-                                    class="border border-start-0 rounded-end-2 py-1 px-2 bg-dark-subtle">Buscar</button>
-                                </div>
-                            </form>
+                        <div class="d-flex align-items-center justify-content-between gap-4">
+                            <h2 class="mb-0 fw-bold">Clases <small class="text-body-secondary fs-6">({{ $totalVideos }})</small></h2>
+                            <a href="{{ route('videos.table') }}">Ver todas las clases</a>
                         </div>
                     </div>
                 </div>
-                @foreach ([['id' => 'carouselWide', 'size' => 3, 'visibility' => 'd-none d-md-block', 'col' => 'col-4'], ['id' => 'carouselNarrow', 'size' => 1, 'visibility' => 'd-md-none', 'col' => 'col-12']] as $carousel)
-                    <div id="{{ $carousel['id'] }}" class="carousel slide pb-4 {{ $carousel['visibility'] }}"
-                        data-bs-theme="dark">
-                        <div class="carousel-indicators">
-                            @foreach ($videos->chunk($carousel['size']) as $chunk)
-                                <button type="button" data-bs-target="#{{ $carousel['id'] }}" data-bs-slide-to="{{ $loop->index }}"
-                                    class="{{ $loop->first ? 'active' : '' }}" @if ($loop->first) aria-current="true" @endif
-                                    aria-label="Slide {{ $loop->iteration }}"></button>
-                            @endforeach
-                        </div>
-                        <div class="carousel-inner p-4">
-                            @foreach ($videos->chunk($carousel['size']) as $chunk)
-                                <div class="carousel-item {{ $loop->first ? 'active' : '' }}">
-                                    <div class="row g-3 px-5">
-                                        @foreach ($chunk as $video)
-                                            <div class="{{ $carousel['col'] }}">
-                                                <img class="img-fluid" src="{{ $video->thumbnail_url }}" alt="{{ $video->title }}">
-                                                <div>
-                                                    <h4>{{ $video->title }}</h4>
-                                                </div>
-                                                <div>
-                                                    <a href="{{ route('admin-details', $video) }}">Ver más</a>
-                                                </div>
-                                            </div>
-                                        @endforeach
+                <div class="row justify-content-center">
+                    <div class="col-12 col-md-10">
+                        <div class="row g-3">
+                            @forelse ($latestVideos as $video)
+                                <div class="col-6 col-md-4 col-lg-2">
+                                    <img class="img-fluid" src="{{ $video->thumbnail_url }}" alt="{{ $video->title }}">
+                                    <div>
+                                        <small>{{ $video->title }}</small>
+                                    </div>
+                                    <div>
+                                        <a href="{{ route('admin-details', $video) }}">Ver más</a>
                                     </div>
                                 </div>
-                            @endforeach
+                            @empty
+                                <p>Todavía no hay clases importadas.</p>
+                            @endforelse
                         </div>
-                        <button class="carousel-control-prev" type="button" data-bs-target="#{{ $carousel['id'] }}"
-                            data-bs-slide="prev">
-                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                            <span class="visually-hidden">Previous</span>
-                        </button>
-                        <button class="carousel-control-next" type="button" data-bs-target="#{{ $carousel['id'] }}"
-                            data-bs-slide="next">
-                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                            <span class="visually-hidden">Next</span>
-                        </button>
                     </div>
-                @endforeach
-                <!-- <div class="table-responsive">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">ID</th>
-                                            <th scope="col">Nombre</th>
-                                            <th scope="col">Thumbnail</th>
-                                            <th scope="col">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($videos as $video)
-                                            <tr>
-                                                <td>{{ $video->id }}</td>
-                                                <td>{{ $video->title }}</td>
-                                                <td><img class="img-fluid" src="{{ $video->thumbnail_url }}" alt="{{ $video->title }}">
-                                                </td>
-                                                <td><a href="{{ route('admin-details', $video) }}">Ver</a></td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div> -->
+                </div>
             </div>
         </div>
         <div>

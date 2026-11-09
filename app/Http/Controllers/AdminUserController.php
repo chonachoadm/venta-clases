@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use App\Models\Video;
 use App\Models\User;
-use App\Models\Purchase;
+use App\Models\Video;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class AdminUserController extends Controller
 {
@@ -16,15 +14,14 @@ class AdminUserController extends Controller
      */
     public function index(Request $request)
     {
-
-    $users = User::query()
-        ->when($request->filter === 'active', function ($query) {
-            $query->whereHas('activeSubscription');
-        })
-        ->when($request->filter === 'inactive', function ($query) {
-            $query->whereDoesntHave('activeSubscription');
-        })
-        ->get();
+        $users = User::query()
+            ->when($request->filter === 'active', function ($query) {
+                $query->where(fn ($query) => $query->whereHas('activeSubscription')->orWhereHas('activePurchase'));
+            })
+            ->when($request->filter === 'inactive', function ($query) {
+                $query->whereDoesntHave('activeSubscription')->whereDoesntHave('activePurchase');
+            })
+            ->get();
         $totalVideos = Video::count();
 
         return view('admin.users.index', compact('users', 'totalVideos'));
@@ -48,6 +45,7 @@ class AdminUserController extends Controller
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|string|regex:/^[0-9+\s()-]+$/',
             'password' => 'required|string|min:6|confirmed',
+            'role' => 'required|in:1,2',
         ], [
             'name.required' => 'Este campo es obligatorio.',
             'name.max' => 'El nombre no puede superar los 255 caracteres.',
@@ -58,6 +56,8 @@ class AdminUserController extends Controller
             'password.required' => 'Este campo es obligatorio.',
             'password.min' => 'La contraseña debe tener 6 caracteres o más.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
+            'role.required' => 'Este campo es obligatorio.',
+            'role.in' => 'El rol elegido no es válido.',
         ]);
 
         User::create([
@@ -65,7 +65,7 @@ class AdminUserController extends Controller
             'email' => $validatedData['email'],
             'phone' => $validatedData['phone'],
             'password' => Hash::make($validatedData['password']),
-            'role' => $request->role,
+            'role' => (int) $validatedData['role'],
         ]);
 
         return redirect()->route('usuarios.index')->with('success', 'Usuario creado exitósamente.');
@@ -76,13 +76,13 @@ class AdminUserController extends Controller
      */
     public function show(string $id)
     {
-        $user = User::where('id', $id)->first();
+        $user = User::findOrFail($id);
         $totalVideos = Video::count();
-        $activeSubscription = $user->activeSubscription()->latest()->first();
+        $activeSubscription = $user->activeSubscription()->with('package')->latest()->first();
+        $activePurchase = $user->activePurchase()->with('package')->latest()->first();
         $phoneNumber = preg_replace('/\D/', '', $user->phone);
 
-        // return view('admin.users.show', compact('user', 'totalVideos', 'activePurchase'));
-        return view('admin.users.show', compact('user', 'totalVideos', 'activeSubscription', 'phoneNumber'));
+        return view('admin.users.show', compact('user', 'totalVideos', 'activeSubscription', 'activePurchase', 'phoneNumber'));
     }
 
     /**
@@ -90,7 +90,8 @@ class AdminUserController extends Controller
      */
     public function edit(string $id)
     {
-        $user = User::where('id', $id)->first();
+        $user = User::findOrFail($id);
+
         return view('admin.users.edit', compact('user'));
     }
 
@@ -99,24 +100,28 @@ class AdminUserController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $user = User::where('id', $id)->first();
+        $user = User::findOrFail($id);
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email',
+            'email' => 'required|email|unique:users,email,'.$user->id,
             'phone' => 'required|string|regex:/^[0-9+\s()-]+$/',
+            'role' => 'required|in:1,2',
         ], [
             'name.required' => 'Este campo es obligatorio.',
             'name.max' => 'El nombre no puede superar los 255 caracteres.',
             'email.required' => 'Este campo es obligatorio.',
+            'email.unique' => 'Ya tenemos un usuario con este correo.',
             'phone.required' => 'Este campo es obligatorio.',
             'phone.regex' => 'El formato de número de teléfono es incorrecto.',
+            'role.required' => 'Este campo es obligatorio.',
+            'role.in' => 'El rol elegido no es válido.',
         ]);
 
         $user->update([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'phone' => $validatedData['phone'],
-            'role' => $request->role,
+            'role' => (int) $validatedData['role'],
         ]);
 
         return redirect()->route('usuarios.index')->with('success', 'Usuario actualizado exitósamente.');
@@ -127,7 +132,7 @@ class AdminUserController extends Controller
      */
     public function destroy(string $id)
     {
-        $user = User::where('id', $id)->first();
+        $user = User::findOrFail($id);
         $user->delete();
 
         return redirect()->route('usuarios.index')->with('success', 'Usuario eliminado correctamente.');

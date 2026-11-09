@@ -69,7 +69,7 @@
                         @if($user->isAdmin())
                         <em>Admin</em>
                         @else
-                        {{ round($user->watchedVideos()->whereNotNull('watched_at')->count() / $totalVideos * 100)}}%
+                        {{ $user->watchedPercentage($totalVideos) }}%
                         @endif
                     </td>
                     <td>

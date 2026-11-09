@@ -22,9 +22,6 @@
             <h1>Suscripciones</h1>
         </div>
         <div>
-            <a href="{{ route('suscripciones.create') }}">Crear nueva suscripción</a>
-        </div>
-        <div>
             <form action="{{ route('suscripciones.index') }}" method="get" id="filterForm">
                 @csrf
                 <div>

@@ -1,4 +1,8 @@
 <div>
+    @if (session('error'))
+        <div class="text-danger">{{ session('error') }}</div>
+    @endif
+
     <h1>Elegí tu propuesta</h1>
 
     <div class="packages-container">

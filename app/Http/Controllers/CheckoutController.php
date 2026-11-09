@@ -7,6 +7,7 @@ use App\Models\Package;
 use App\Models\Purchase;
 use App\Models\Subscription;
 use App\Services\PaymentServiceFactory;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -44,7 +45,7 @@ class CheckoutController extends Controller
             ]);
         }
 
-        $guest = Guest::firstOrCreate(
+        $guest = Guest::updateOrCreate(
             ['email' => $validated['email']],
             [
                 'name' => $validated['name'],
@@ -132,20 +133,28 @@ class CheckoutController extends Controller
      */
     private function checkoutSelection(): array
     {
-        $guest = Guest::findOrFail(session('checkout.guest_id'));
-        $package = Package::findOrFail(session('checkout.package_id'));
+        $guest = Guest::find(session('checkout.guest_id'));
+        $package = Package::find(session('checkout.package_id'));
+
+        if (! $guest || ! $package) {
+            throw new HttpResponseException(
+                redirect()->route('checkout')->with('error', 'Tu sesión expiró. Elegí el paquete y completá tus datos de nuevo.')
+            );
+        }
 
         return [$guest, $package];
     }
 
     private function redirectToProvider(array $result): RedirectResponse
     {
+        $url = $result['redirect_url'] ?? route('index');
+
         if (isset($result['error'])) {
-            return redirect()->away($result['redirect_url'])
+            return redirect()->away($url)
                 ->with('error', 'Hubo un error, intentá de nuevo más tarde.');
         }
 
-        return redirect()->away($result['redirect_url'])
+        return redirect()->away($url)
             ->with('success', '¡Bienvenidx! En breve te llegará un correo para terminar de crear tu usuario.');
     }
 }

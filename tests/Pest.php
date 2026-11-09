@@ -1,5 +1,8 @@
 <?php
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -11,8 +14,8 @@
 |
 */
 
-pest()->extend(Tests\TestCase::class)
- // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+pest()->extend(TestCase::class)
+    ->use(RefreshDatabase::class)
     ->in('Feature');
 
 /*
@@ -41,7 +44,17 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Headers Mercado Pago would send for a webhook whose data.id is $dataId, signed with $secret.
+ *
+ * @return array{x-signature: string, x-request-id: string}
+ */
+function mercadoPagoSignedHeaders(string $dataId, string $secret, string $requestId = 'req-1', string $timestamp = '1704908010'): array
 {
-    // ..
+    $manifest = ($dataId === '' ? '' : 'id:'.strtolower($dataId).';')."request-id:{$requestId};ts:{$timestamp};";
+
+    return [
+        'x-signature' => "ts={$timestamp},v1=".hash_hmac('sha256', $manifest, $secret),
+        'x-request-id' => $requestId,
+    ];
 }

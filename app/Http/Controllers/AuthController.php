@@ -25,14 +25,22 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-            if (auth()->user()->role === 1) {
-                return redirect()->route('dashboard')->with('success', 'Bienvenida Gise!');
-                }
-            if(auth()->user()->activeSubscription()) {
-                return redirect()->route('videos')->with('success', 'Bienvenidx ' . auth()->user()->name . '!');
-            } else {
-                return redirect()->route('index')->with('success', 'Bienvenidx ' . auth()->user()->name . '!');
+            $user = $request->user();
+            $welcome = 'Bienvenidx '.$user->name.'!';
+
+            if ($user->must_change_password) {
+                return redirect()->route('password.change')->with('success', $welcome);
             }
+
+            if ($user->isAdmin()) {
+                return redirect()->route('dashboard')->with('success', $welcome);
+            }
+
+            if ($user->hasActiveAccess()) {
+                return redirect()->route('videos')->with('success', $welcome);
+            }
+
+            return redirect()->route('index')->with('success', $welcome);
         }
 
         return back()->withErrors([
@@ -45,6 +53,7 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect()->route('showLogin');
     }
 }

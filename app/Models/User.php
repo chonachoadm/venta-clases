@@ -25,6 +25,7 @@ class User extends Authenticatable
         'phone',
         'password',
         'role',
+        'must_change_password',
     ];
 
     /**
@@ -47,6 +48,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
         ];
     }
 
@@ -83,5 +85,22 @@ class User extends Authenticatable
     public function isAdmin()
     {
         return $this->role === 1;
+    }
+
+    public function hasActiveAccess(): bool
+    {
+        return $this->activeSubscription()->exists() || $this->activePurchase()->exists();
+    }
+
+    /**
+     * Share of the library this user has watched, as a whole percentage (0 when the library is empty).
+     */
+    public function watchedPercentage(int $totalVideos): int
+    {
+        if ($totalVideos === 0) {
+            return 0;
+        }
+
+        return (int) round($this->watchedVideos()->whereNotNull('watched_at')->count() / $totalVideos * 100);
     }
 }

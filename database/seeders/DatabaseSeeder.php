@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
         $this->call(PackageSeeder::class);
 
         User::factory()->create([
-            'name' => 'Gise Braier',
+            'name' => 'Nacho Lopez',
             'email' => 'admin@user.com',
             'password' => Hash::make('asdasd'),
             'role' => 1,
@@ -32,9 +32,9 @@ class DatabaseSeeder extends Seeder
             'description' => 'Every video available.',
         ]);
 
-        Artisan::call('youtube:import', [
-            'playlistId' => 'PLLNFRn-GVWb0Z-FdpMU3bHoVOIOPufyg5',
-            'moduleId' => 1,
-        ]);
+        // Artisan::call('youtube:import', [
+        //     'playlistId' => 'PLLNFRn-GVWb0Z-FdpMU3bHoVOIOPufyg5',
+        //     'moduleId' => 1,
+        // ]);
     }
 }
